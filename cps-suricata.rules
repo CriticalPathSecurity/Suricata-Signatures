@@ -1,0 +1,98 @@
+# Some Rules are based on the CERTCC research and have been modified due to syntax and format issues
+# Possible remote code execution, or DoS using IP-in-IP tunneled fragmented packets
+alert ip any any -> any any (msg:"VU#257161:CVE-2020-11896,CVE-2020-11898 Fragments inside IP-in-IP tunnel https://kb.cert.org"; ip_proto:4; fragbits:M; sid:1367257161; rev:1;)
+# Type 0 Routing header deprecated per RFC 5095
+alert ipv6 any any -> any any (msg:"VU#257161:CVE‑2020‑11897 IPv6 deprecated RH Type 0 source routing attack"; decode-event:ipv6.rh_type_0;sid:1368257161; rev:1;)
+# IPv6 multicast destination
+#alert ipv6 any any -> ff00::/8 any (msg:"VU#257161:CVE‑2020‑11899 Multicast out-of-bound read";sid:1369257161; rev:1;)
+#IP-in-IP packet tunneling
+alert ip any any -> any any (msg:"VU#257161:CVE-2020-11900 IP-in-IP tunnel Double-Free https://kb.cert.org"; ip_proto:4; sid:1370257161; rev:1;)
+#Malformed DNS with large payload
+#alert dns any any -> any any (msg:"VU#257161:CVE-2020-11901 DNS malformed response to provide incorrect size for heap allocation error"; dsize:>128 ; app-layer-event:dns.malformed_data; sid:1371257161; rev:1;)
+#uses ICMPv4 to report a parameter problem in a crafted packet X (IPv4 + ICMPv4 type=param‑problem + X),
+#alert icmp any any -> any any (msg:"VU#257161:CVE-2020-11902 ICMPv4 parameter problem with tunnel inside"; itype:12; sid:1372257161; rev:1;)
+alert icmp any any -> any any (msg:"VU#257161:CVE-2020-CVE‑2020‑11910 anomalous ICMPv4 type 3,code 4 Path MTU Discovery"; itype:3; icode:4; sid:1373257161; rev:1;)
+alert icmp any any -> any any (msg:"VU#257161:CVE-2020-CVE‑2020‑1191 anomalous ICMPv4 Address Mask Reply message (type 18, code 0)"; itype:18; icode:0; sid:1374257161; rev:1;)
+#This Snort IDS rule looks for any IP-in-IP traffic, whether
+#intentional or not. Further filtering can be applied to ignore sources
+#and destinations that are allowed by your policy to route IP-in-IP
+#traffic.
+alert ip any any -> any any (msg:"IP-in-IP Tunneling Detected VU#636397 https://kb.cert.org"; ip_proto:4; sid: 1367636397; rev:1;)
+#Suricata rule to test for SUBSCRIBE being abused. Case sensitivity is NOT required as HTTP
+#method SUBSCRIBE is supposed to be uppercase.  However we saw some implementations that
+#accept HTTP method in lowercase.
+alert http any any -> ![fd00::/8,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12] any (msg:"UPnP SUBSCRIBE request seen to external network VU#339275: CVE-2020-12695 https://kb.cert.org "; content: "subscribe"; nocase; http_method; sid:1367339275;)
+#IDS rules are bound to have false/positive and false/negatives at times.  Note:
+#these can be easily evaded by padding and other tricks done when packet crafting.
+#USE AT YOUR OWN RISK!
+#We have done our best to avoid false/negatives.  There is a sample pcap file in
+#this folder called gre-samples.pcap which has one GRE EAP-MD5 packet matching buffer
+#overflow payload (256 length hostname 'AA..A') and one that does not (255 length
+#hostname with 'AA..A')
+#GRE packet ip_proto == 47
+#This also could be EAP-MD5 response but usually ignored by PPTPD so focus on EAP-MD5 challenge
+#PPP - EAP-MD5 Challenge packet == 0xc22701
+#Hostname greater than 256 and total length greater than, Note: IP Frame 20 bytes is not
+#included in the dsize.
+#Length of hostname > 256, so total_packet >287 bytes = 12 (Ethernet-Frame) + GRE Encapsulation (12) + PPP-Protocol (2) + EAP-Framing-length(4)
+#Using GRE rules SID format 116:161:*
+alert ip any any -> any any (msg:"GRE EAP-Md5 Challenge abnormal length, possible buffer overflow"; ip_proto:47; content: "|c2 27 01|"; offset: 0; dsize: > 287; sid: 1161617194; rev:1; rawbytes;)
+
+
+# Copyright 2020 by FireEye, Inc.
+# You may not use this file except in compliance with the license. The license should have been received with this file. You may obtain a copy of the license at:
+# https://github.com/fireeye/sunburst_countermeasures/blob/main/LICENSE.txt
+
+# Modified by Champ Clark III @ Quadrant Information Security ( 12/14/2020 )
+
+alert tcp $HOME_NET any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"/swip/Events HTTP/1"; within:100; content:"Host: "; content:!".solarwinds.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000334; rev:1;)
+
+alert tcp $HOME_NET any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"/swip/upd/SolarWinds.CortexPlugin.Components.xml"; distance:0; content:"Host: "; content:!".solarwinds.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000335; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:".avsvmcloud.com"; distance:0; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000336; rev:1;)
+
+alert tcp $HOME_NET any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"swip/Upload.ashx HTTP/1"; within:100; content:"Host: "; content:!".solarwinds.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000337; rev:1;)
+
+alert tcp $HOME_NET any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"/swip/upd/"; within:75; content:" HTTP/1."; distance:0; content:"Host: "; content:!".solarwinds.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000338; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"avsvmcloud.com"; distance:0; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000358; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"|55 04 03|"; distance:0; content:"digitalcollege.org"; within:50; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000339; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"|55 04 03|"; distance:0; content:"freescanonline.com"; within:50; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000359; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"|55 04 03|"; distance:0; content:"deftsecurity.com"; within:50; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000340; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"|55 04 03|"; distance:0; content:"thedoccloud.com"; within:50; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000341; rev:1;)
+
+alert tcp any any <> any 443 (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"|16 03|"; depth:2; content:"|55 04 03|"; distance:0; content:"virtualdataserver.com"; within:50; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000342; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:"digitalcollege.org"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000343; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:"freescanonline.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000344; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:"deftsecurity.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000345; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:"thedoccloud.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000346; rev:1;)
+
+alert tcp any any -> any any (msg:"[FireEye SUNBURST] Backdoor.SUNBURST"; content:"T "; offset:2; depth:3; content:"Host:"; content:"virtualdataserver.com"; within:100; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000347; rev:1;)
+
+alert tcp $HOME_NET any -> any 443 (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"|16 03 03|"; depth:3; content:"incomeupdate.com"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000348; rev:1;)
+
+alert tcp $HOME_NET any -> any 443 (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"|16 03 03|"; depth:3; content:"zupertech.com"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000349; rev:1;)
+
+alert tcp $HOME_NET any -> any 443 (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"|16 03 03|"; depth:3; content:"databasegalore.com"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000350; rev:1;)
+
+alert tcp $HOME_NET any -> any 443 (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"|16 03 03|"; depth:3; content:"panhardware.com"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000351; rev:1;)
+
+alert tcp $HOME_NET any -> any any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"POST"; depth:4; content:"|0d 0a 0d 0a|name=\""; content:"\"\;filename=\""; content:"\"|0a|Content-Type:"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000352; rev:1;)
+
+alert tcp any any -> $HOME_NET any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; content:"HTTP/1."; depth:7; content:"Server: nginx/1.14.0 (Ubuntu)"; distance:0; content:"Connection: close"; distance:0; content:"Cache-Control: max-age=300, must-revalidate"; distance:0; content:"X-Content-Type-Options: nosniff"; distance:0; content:"X-AspNetMvc-Version: 3.0"; distance:0; content:"X-AspNet-Version: 4.0.30319"; distance:0; content:"X-Powered-By: ASP.NET"; distance:0; content:"Content-Length: "; content:"|0d 0a|"; distance:6; within:4; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000353; rev:1;)
+
+alert tcp any any -> $HOME_NET any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; flow:from_server; content:"<title>Woman-Five-How-To-Why-Your-Celebrating-Learn-Brand</title>"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000354; rev:1;)
+
+alert tcp any any -> $HOME_NET any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; flow:from_server; content:"<p>Companies-Best-Man-Vendors-Best</p>"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000355; rev:1;)
+
+alert tcp any any -> $HOME_NET any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; flow:from_server; content:"<meta name=\"msvalidate.01\" content=\"ECEE9516DDABFC7CCBBF1EACC04CAC20\">"; content:"<meta name=\"google-site-verification\" content=\"CD5EF1FCB54FE29C838ABCBBE0FA57AE\">"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000356; rev:1;)
+
+alert tcp any any -> $HOME_NET any (msg:"[FireEye SUNBURST] Backdoor.BEACON"; flow:from_server; content:"<p>Million-Support-Years-Week-Agents</p>"; classtype:trojan-activity; reference: url,www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html; sid:10000357; rev:1;)
